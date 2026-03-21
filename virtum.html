@@ -17,33 +17,71 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/virtum.css">
     <link rel="stylesheet" href="assets/css/theme-apple.css">
 </head>
 <body>
-    <a href="#login-screen" class="skip-link">Skip to content</a>
+    <a href="#landing-screen" class="skip-link">Skip to content</a>
     <div id="connection-banner" class="connection-banner" role="status" aria-live="polite" hidden></div>
     <div class="container">
-        <!-- Login Screen -->
-        <div class="screen active" id="login-screen">
+        <!-- Landing Screen -->
+        <div class="screen active" id="landing-screen">
             <div class="header">
                 <h1 class="brand-title">
                     <img src="assets/img/virtum-logo.png" alt="Virtum logo" class="brand-logo">
                     <span>Virtum</span>
                 </h1>
-                <p>Your Personal Wellness Assistant</p>
+                <p>Your AI Health Companion</p>
             </div>
             <div class="content">
-                <div class="form-group">
-                    <label>Email or Username</label>
-                    <input type="text" id="login-email" placeholder="Enter email or username" autocomplete="username">
+                <section class="hero-block">
+                    <h2>Track, predict and improve your health in one place.</h2>
+                    <p>Personal metrics, smart insights, and daily actions in one clean experience.</p>
+                    <button class="btn" onclick="showScreen('login-screen')">Get Started</button>
+                </section>
+
+                <section class="feature-row" aria-label="Key product benefits">
+                    <div class="feature-pill">Real-time health tracking</div>
+                    <div class="feature-pill">AI recommendations</div>
+                    <div class="feature-pill">Privacy-first design</div>
+                </section>
+
+                <section class="trust-row" aria-label="Trust and security">
+                    <span>Your data is secure</span>
+                    <span>AI-based recommendations</span>
+                    <span>Built for daily habits</span>
+                </section>
+
+            </div>
+        </div>
+
+        <!-- Login Screen -->
+        <div class="screen" id="login-screen">
+            <div class="header header-with-back">
+                <button class="back-btn" onclick="showScreen('landing-screen')" aria-label="Go back">←</button>
+                <div class="header-content">
+                    <h1 class="header-title-with-logo">
+                        <img src="assets/img/virtum-logo.png" alt="Virtum logo" class="header-logo">
+                        <span>Welcome Back</span>
+                    </h1>
+                    <p>Sign in to continue with Virtum</p>
                 </div>
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" id="login-password" placeholder="Enter your password">
+                <div style="width: 40px;"></div>
+            </div>
+            <div class="content">
+                <div class="auth-card">
+                    <div class="form-group">
+                        <label>Email or Username</label>
+                        <input type="text" id="login-email" placeholder="Enter email or username" autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="login-password" placeholder="Enter your password">
+                    </div>
+                    <button class="btn" onclick="login()">Login</button>
+                    <button class="btn btn-secondary" onclick="showScreen('register-screen')">Create Account</button>
                 </div>
-                <button class="btn" onclick="login()">Login</button>
-                <button class="btn btn-secondary" onclick="showScreen('register-screen')">Create Account</button>
                 <p class="legal-footer">
                     <a href="terms.html" target="_blank" rel="noopener noreferrer">Terms of Service</a>
                     <span aria-hidden="true"> · </span>
@@ -206,49 +244,152 @@
                 <div style="width: 40px;"></div>
             </div>
             <div class="content">
-                <div class="metrics-grid" id="metrics-grid" role="region" aria-label="Health metrics dashboard">
-                    <div class="loading" role="status" aria-live="polite">Loading metrics...</div>
-                </div>
+                <div class="dashboard-layout container-fluid p-0">
+                    <div class="row g-3">
+                        <div class="col-12 col-xl-8">
+                            <div class="metrics-grid" id="metrics-grid" role="region" aria-label="Health metrics dashboard">
+                                <div class="loading" role="status" aria-live="polite">Loading metrics...</div>
+                            </div>
+                            <div id="provider-summary" class="stats-card provider-summary-card" aria-label="Provider summary panel">
+                                <div class="loading">Loading provider summary...</div>
+                            </div>
 
-                <div class="mini-charts" aria-label="Health trend charts">
-                    <div class="mini-chart-card">
-                        <div class="mini-chart-title">Heart Rate (bpm)</div>
-                        <canvas id="heart-rate-chart"></canvas>
-                    </div>
-                    <div class="mini-chart-card">
-                        <div class="mini-chart-title">Steps (x1000)</div>
-                        <canvas id="steps-chart"></canvas>
+                            <div class="mini-charts" aria-label="Health trend charts">
+                                <div class="mini-chart-card">
+                                    <div class="mini-chart-title">Heart Rate (bpm)</div>
+                                    <canvas id="heart-rate-chart"></canvas>
+                                </div>
+                                <div class="mini-chart-card">
+                                    <div class="mini-chart-title">Steps (x1000)</div>
+                                    <canvas id="steps-chart"></canvas>
+                                </div>
+                            </div>
+
+                            <div class="quick-actions">
+                                <button class="action-btn" onclick="storeNewData()" aria-label="Generate and store new simulated health data">Generate & Store New Data</button>
+                                <button class="action-btn" onclick="loadData()" aria-label="Refresh data from database">Refresh Data from DB</button>
+                                <button class="action-btn" onclick="showScreen('ai-chat-screen')" aria-label="Open chat with Jeffrey">Chat with Jeffrey</button>
+                                <button class="action-btn" onclick="toggleReminderPanel()" aria-label="Open reminder timer settings">Reminder Timer</button>
+                                <button class="action-btn" onclick="exportMyData()" aria-label="Download my profile data as JSON">Export my data</button>
+                                <button class="action-btn" onclick="logout()" aria-label="Logout from account">Logout</button>
+                            </div>
+                            <div id="daily-focus" class="stats-card daily-focus-card" aria-label="Daily focus panel">
+                                <div class="loading">Preparing daily focus...</div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-xl-4">
+                            <div class="stats-card">
+                                <div class="stats-title">💧 Today's Water Goal</div>
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="water-progress" style="width: 0%"></div>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+                                    <span style="font-size: 13px; color: #718096; font-weight: 500;" id="water-amount">0 / 2.5 L</span>
+                                    <div style="display:flex; gap:8px;">
+                                        <button class="btn" onclick="resetWater()" style="width: auto; padding: 10px 16px; margin: 0;" aria-label="Reset water amount">Reset</button>
+                                        <button class="btn" onclick="logWater()" style="width: auto; padding: 10px 20px; margin: 0;" aria-label="Add 250 milliliters of water">+ 250ml</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="stats-card reminder-card">
+                                <div class="reminder-header">
+                                    <div class="stats-title">⏰ Reminder Timer</div>
+                                    <button class="action-btn reminder-toggle-btn" onclick="toggleReminderPanel()" aria-label="Toggle reminder settings">Configure</button>
+                                </div>
+                                <p id="reminder-status" class="reminder-status">Timer is off.</p>
+                                <div id="reminder-panel" class="reminder-panel" hidden>
+                                    <p class="reminder-help">Set an interval in minutes to receive hydration reminders.</p>
+                                    <div class="reminder-controls">
+                                        <input id="reminder-minutes" type="number" min="1" max="1440" step="1" value="120" aria-label="Reminder interval in minutes">
+                                        <button class="action-btn" onclick="setReminderTimer()" aria-label="Start reminder timer">Start Timer</button>
+                                        <button class="action-btn action-btn-muted" onclick="stopReminderTimer()" aria-label="Stop reminder timer">Stop</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="stats-card goals-card">
+                                <div class="stats-title">🎯 Personal Goals</div>
+                                <div class="goal-form-grid">
+                                    <label>Water (L)<input id="goal-water" type="number" min="0.5" max="8" step="0.1" value="2.5"></label>
+                                    <label>Steps<input id="goal-steps" type="number" min="1000" max="40000" step="500" value="10000"></label>
+                                    <label>Calories<input id="goal-calories" type="number" min="1000" max="5000" step="50" value="2200"></label>
+                                    <label>Sleep (h)<input id="goal-sleep" type="number" min="4" max="12" step="0.5" value="8"></label>
+                                </div>
+                                <div class="goal-actions">
+                                    <button class="action-btn" onclick="saveGoals()">Save Goals</button>
+                                    <button class="action-btn action-btn-muted" onclick="resetGoals()">Reset</button>
+                                </div>
+                                <div class="goal-quick-add">
+                                    <button class="action-btn" onclick="quickAddMetric('steps', 500)">+500 Steps</button>
+                                    <button class="action-btn" onclick="quickAddMetric('calorieIntake', 200)">+200 Calories</button>
+                                    <button class="action-btn" onclick="quickAddMetric('sleepHours', 1)">+1h Sleep</button>
+                                </div>
+                                <div class="goal-manual-add">
+                                    <label>Exact steps
+                                        <input id="manual-steps" type="number" min="0" max="100000" step="1" placeholder="e.g. 7200">
+                                    </label>
+                                    <button class="action-btn" onclick="setMetricValue('steps', 'manual-steps')">Save Steps</button>
+                                    <label>Exact calories
+                                        <input id="manual-calories" type="number" min="0" max="10000" step="1" placeholder="e.g. 1850">
+                                    </label>
+                                    <button class="action-btn" onclick="setMetricValue('calorieIntake', 'manual-calories')">Save Calories</button>
+                                    <label>Exact sleep (h)
+                                        <input id="manual-sleep" type="number" min="0" max="24" step="0.1" placeholder="e.g. 7.5">
+                                    </label>
+                                    <button class="action-btn" onclick="setMetricValue('sleepHours', 'manual-sleep')">Save Sleep</button>
+                                </div>
+                                <div id="goals-progress" class="goals-progress"></div>
+                            </div>
+
+                            <div class="ai-section">
+                                <div class="ai-header">
+                                    <div class="ai-icon"><img src="assets/img/bot-logo.svg" alt="Jeffrey logo" class="ai-logo-img"></div>
+                                    <div class="ai-title">Jeffrey — Health Insight</div>
+                                </div>
+                                <div class="ai-message" id="ai-insight">
+                                    Loading insight from database...
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <div class="stats-card">
-                    <div class="stats-title">💧 Today's Water Goal</div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="water-progress" style="width: 0%"></div>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
-                        <span style="font-size: 13px; color: #718096; font-weight: 500;" id="water-amount">0 / 2.5 L</span>
-                        <button class="btn" onclick="logWater()" style="width: auto; padding: 10px 20px; margin: 0;" aria-label="Add 250 milliliters of water">+ 250ml</button>
-                    </div>
+        <!-- Full Charts Screen -->
+        <div class="screen" id="charts-screen">
+            <div class="header header-with-back">
+                <button class="back-btn" onclick="showScreen('dashboard-screen')" aria-label="Go back to dashboard">←</button>
+                <div class="header-content">
+                    <h1>All Health Charts</h1>
+                    <p>Expanded trends and historical overview</p>
                 </div>
-
-                <div class="ai-section">
-                    <div class="ai-header">
-                        <div class="ai-icon">🤖</div>
-                        <div class="ai-title">Jeffrey — Health Insight</div>
+                <div style="width: 40px;"></div>
+            </div>
+            <div class="content">
+                <div class="charts-grid">
+                    <div class="large-chart-card">
+                        <div class="mini-chart-title">Heart Rate Trend</div>
+                        <canvas id="chart-full-heart"></canvas>
                     </div>
-                    <div class="ai-message" id="ai-insight">
-                        Loading insight from database...
+                    <div class="large-chart-card">
+                        <div class="mini-chart-title">Steps Trend</div>
+                        <canvas id="chart-full-steps"></canvas>
                     </div>
-                </div>
-
-                <div class="quick-actions">
-                    <button class="action-btn" onclick="storeNewData()" aria-label="Generate and store new simulated health data">Generate & Store New Data</button>
-                    <button class="action-btn" onclick="loadData()" aria-label="Refresh data from database">Refresh Data from DB</button>
-                    <button class="action-btn" onclick="showScreen('ai-chat-screen')" aria-label="Open chat with Jeffrey">Chat with Jeffrey</button>
-                    <button class="action-btn" onclick="setReminder()" aria-label="Set health reminder">Set Reminder</button>
-                    <button class="action-btn" onclick="exportMyData()" aria-label="Download my profile data as JSON">Export my data</button>
-                    <button class="action-btn" onclick="logout()" aria-label="Logout from account">Logout</button>
+                    <div class="large-chart-card">
+                        <div class="mini-chart-title">Water Intake Trend</div>
+                        <canvas id="chart-full-water"></canvas>
+                    </div>
+                    <div class="large-chart-card">
+                        <div class="mini-chart-title">Calories Trend</div>
+                        <canvas id="chart-full-calories"></canvas>
+                    </div>
+                    <div class="large-chart-card">
+                        <div class="mini-chart-title">Sleep Trend</div>
+                        <canvas id="chart-full-sleep"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
@@ -258,7 +399,7 @@
             <div class="header header-with-back">
                 <button class="back-btn" onclick="showScreen('dashboard-screen')" aria-label="Go back to dashboard">←</button>
                 <div class="header-content">
-                    <h1>🤖 Jeffrey</h1>
+                    <h1 class="header-title-with-logo"><img src="assets/img/bot-logo.svg" alt="Jeffrey logo" class="chat-title-logo"><span>Jeffrey</span></h1>
                     <p>Ask anything about your health data</p>
                 </div>
                 <div style="width: 40px;"></div>
@@ -266,7 +407,7 @@
             <div class="content">
                 <div class="chat-container" id="chat-messages">
                     <div class="message ai">
-                        <div class="message-avatar">🤖</div>
+                        <div class="message-avatar"><img src="assets/img/bot-logo.svg" alt="Jeffrey logo" class="bot-avatar-img"></div>
                         <div class="message-bubble">
                             👋 Hello! I'm Jeffrey — your personal health assistant.<br><br>
                             I can help you with:<br>
@@ -284,14 +425,40 @@
                 </div>
             </div>
         </div>
+
+        <!-- Biomarker Details Screen -->
+        <div class="screen" id="biomarker-detail-screen">
+            <div class="header header-with-back">
+                <button class="back-btn" onclick="showScreen('dashboard-screen')" aria-label="Go back to dashboard">←</button>
+                <div class="header-content">
+                    <h1 id="biomarker-detail-title">Biomarker</h1>
+                    <p id="biomarker-detail-subtitle">Health indicator details</p>
+                </div>
+                <div style="width: 40px;"></div>
+            </div>
+            <div class="content">
+                <div class="stats-card biomarker-detail-card">
+                    <div class="stats-title" id="biomarker-detail-value">--</div>
+                    <p id="biomarker-detail-about" class="biomarker-detail-about">Loading details...</p>
+                </div>
+                <div id="biomarker-detail-insights" class="biomarker-detail-insights"></div>
+                <button class="btn" onclick="showScreen('dashboard-screen')">Back to Dashboard</button>
+            </div>
+        </div>
     </div>
 
     <div class="nav-buttons" id="nav-buttons">
         <button class="nav-btn active" onclick="showScreen('login-screen')" id="nav-login">Login</button>
         <button class="nav-btn" onclick="showScreen('register-screen')" id="nav-register">Register</button>
         <button class="nav-btn" onclick="showScreen('dashboard-screen')" id="nav-dashboard">Dashboard</button>
+        <button class="nav-btn" onclick="showScreen('charts-screen')" id="nav-charts">Charts</button>
         <button class="nav-btn" onclick="showScreen('ai-chat-screen')" id="nav-chat">Jeffrey</button>
     </div>
+
+    <footer class="site-footer">
+        <span>Contact: <a href="mailto:vhcvirtum@gmail.com">vhcvirtum@gmail.com</a> · <a href="tel:+77053472342">+7 705 347 2342</a></span>
+        <span>Copyright © 2026 Virtum. All rights reserved.</span>
+    </footer>
 
     <!-- Toast notification -->
     <div id="toast" class="toast"></div>

@@ -21,6 +21,10 @@ body::before {
     display: none;
 }
 
+.connection-banner {
+    background: #c53030;
+}
+
 .container {
     background: var(--a-surface);
     border: 1px solid #e5e5ea;
@@ -31,10 +35,23 @@ body::before {
 .dashboard-header {
     background: var(--a-surface-2);
     color: var(--a-text);
+    width: 100%;
     border-bottom: 1px solid #e5e5ea;
 }
 
+.dashboard-header {
+    width: 100%;
+    margin: 0 0 20px 0;
+    box-sizing: border-box;
+    align-self: stretch;
+    border-radius: 0;
+}
+
 .header::before {
+    display: none;
+}
+
+.dashboard-header::before {
     display: none;
 }
 
@@ -80,6 +97,11 @@ input:focus,
     box-shadow: none;
 }
 
+.message-avatar {
+    background: var(--a-accent);
+    box-shadow: none;
+}
+
 .btn:hover,
 .send-btn:hover {
     background: var(--a-accent-hover);
@@ -88,15 +110,28 @@ input:focus,
 
 .btn-secondary,
 .action-btn {
-    background: var(--a-surface-2);
-    color: var(--a-text);
-    border-color: #d1d1d6;
+    background: var(--a-accent);
+    color: #fff;
+    border-color: var(--a-accent);
 }
 
 .btn-secondary:hover,
 .action-btn:hover {
-    background: #e8e8ed;
-    color: var(--a-text);
+    background: var(--a-accent-hover);
+    color: #fff;
+    border-color: var(--a-accent-hover);
+}
+
+.action-btn.action-btn-muted {
+    background: #eef2f7;
+    color: #3f536e;
+    border-color: #cfd9e8;
+}
+
+.action-btn.action-btn-muted:hover {
+    background: #e3ebf6;
+    color: #324861;
+    border-color: #bdcce0;
 }
 
 .message.ai .message-bubble,
@@ -110,6 +145,12 @@ canvas {
     border: 1px solid #e5e5ea;
     color: var(--a-text);
     box-shadow: none;
+}
+
+.message.ai .message-bubble {
+    background: var(--a-accent);
+    color: #fff !important;
+    border-color: var(--a-accent);
 }
 
 .back-btn {
@@ -179,8 +220,98 @@ canvas {
 .toast.error { background: var(--a-danger); }
 .toast.info { background: var(--a-accent); }
 
+.site-footer {
+    color: var(--a-muted);
+}
+
+.site-footer a {
+    color: var(--a-accent);
+}
+
+.goal-progress-item {
+    background: #f5f8fd;
+    border-color: #dce8f8;
+}
+
+.goal-progress-head,
+.goal-form-grid label,
+.reminder-help,
+.reminder-status {
+    color: var(--a-muted) !important;
+}
+
+.status-chip.status-good { background: rgba(52, 199, 89, 0.15); color: #248b46; }
+.status-chip.status-watch { background: rgba(255, 179, 0, 0.18); color: #8b6706; }
+.status-chip.status-neutral { background: #e7ecf3; color: #56647a; }
+
 .metric-value {
     color: var(--a-accent);
+}
+
+/* Landing-like login composition */
+#landing-screen .content {
+    display: grid;
+    gap: 14px;
+    align-content: start;
+}
+
+.hero-block {
+    background: var(--a-surface-2);
+    border: 1px solid #e5e5ea;
+    border-radius: 14px;
+    padding: 16px;
+}
+
+.hero-block h2 {
+    margin: 0 0 8px;
+    font-size: 24px;
+    line-height: 1.2;
+    color: var(--a-text);
+}
+
+.hero-block p {
+    margin: 0 0 14px;
+    color: var(--a-muted);
+    font-size: 14px;
+}
+
+.feature-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.feature-pill {
+    background: #f7f7fa;
+    border: 1px solid #e5e5ea;
+    border-radius: 14px;
+    padding: 10px 12px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 600;
+    color: #4f5665;
+}
+
+.trust-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    font-size: 12px;
+    color: var(--a-muted);
+    border-top: 1px solid #ececf1;
+    border-bottom: 1px solid #ececf1;
+    padding: 8px 0;
+}
+
+.auth-card {
+    background: var(--a-surface-2);
+    border: 1px solid #e5e5ea;
+    border-radius: 14px;
+    padding: 14px;
 }
 
 /* Final overrides: remove legacy gradients and mini-chart layout */
@@ -208,6 +339,11 @@ canvas {
     padding: 10px 10px 8px;
 }
 
+.large-chart-card {
+    background: var(--a-surface-2);
+    border: 1px solid #e5e5ea;
+}
+
 .mini-chart-title {
     font-size: 12px;
     font-weight: 600;
@@ -226,6 +362,8 @@ canvas {
 }
 
 @media (max-width: 768px) {
+    .hero-block h2 { font-size: 20px; }
+    .feature-row { grid-template-columns: 1fr; }
     .mini-charts {
         grid-template-columns: 1fr;
         gap: 10px;
