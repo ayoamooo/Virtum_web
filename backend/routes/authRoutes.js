@@ -2,8 +2,15 @@ const express = require('express');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { db } = require('../db');
-const { JWT_SECRET } = require('../config');
-const { hashPassword, verifyPassword } = require('../authUtils');
+const {
+  JWT_SECRET,
+  FIREBASE_ENABLED,
+  FIREBASE_WEB_API_KEY,
+  FIREBASE_AUTH_DOMAIN,
+  FIREBASE_APP_ID
+} = require('../config');
+const { hashPassword } = require('../authUtils');
+const { verifyFirebaseIdToken } = require('../firebaseAdmin');
 
 const router = express.Router();
 
@@ -18,125 +25,138 @@ function issueToken(user) {
   );
 }
 
-function normalizeIdentifier(v) {
-  return String(v || '').trim();
+function dbGet(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
+  });
 }
 
-function findUserByIdentifier(identifier, cb) {
-  const i = normalizeIdentifier(identifier);
-  if (!i) return cb(null, null);
-  db.get(
-    `SELECT id, username, email, password_hash, password_salt, email_verified
-     FROM users
-     WHERE lower(email) = lower(?) OR lower(username) = lower(?)
-     LIMIT 1`,
-    [i, i],
-    cb
-  );
+function dbRun(sql, params = []) {
+  return new Promise((resolve, reject) => {
+    db.run(sql, params, function runCb(err) {
+      if (err) return reject(err);
+      resolve(this);
+    });
+  });
 }
 
-function isStrongPassword(pwd) {
-  const p = String(pwd || '');
-  return p.length >= 8 &&
-    /[a-z]/.test(p) &&
-    /[A-Z]/.test(p) &&
-    /[0-9]/.test(p) &&
-    /[^a-zA-Z0-9]/.test(p);
+async function pickUniqueUsername(seed) {
+  const normalizedSeed = String(seed || 'user')
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 20) || 'user';
+
+  let candidate = USERNAME_REGEX.test(normalizedSeed) ? normalizedSeed : `user_${Math.floor(Math.random() * 999999)}`;
+  for (let i = 0; i < 30; i++) {
+    // eslint-disable-next-line no-await-in-loop
+    const exists = await dbGet('SELECT id FROM users WHERE username = ? LIMIT 1', [candidate]);
+    if (!exists) return candidate;
+    const suffix = String(Math.floor(Math.random() * 9999)).padStart(4, '0');
+    candidate = `${normalizedSeed.slice(0, 15)}_${suffix}`.slice(0, 20);
+  }
+  return `user_${Date.now().toString().slice(-8)}`;
 }
 
-router.post('/register-request', async (req, res) => {
+router.get('/firebase-config', (req, res) => {
+  return res.json({
+    enabled: FIREBASE_ENABLED,
+    apiKey: FIREBASE_ENABLED ? FIREBASE_WEB_API_KEY : '',
+    authDomain: FIREBASE_ENABLED ? FIREBASE_AUTH_DOMAIN : '',
+    appId: FIREBASE_ENABLED ? FIREBASE_APP_ID : ''
+  });
+});
+
+router.post('/firebase-resolve-identifier', async (req, res) => {
   try {
-    const { username, email, password, newsletterOptIn } = req.body || {};
-    const u = String(username || '').trim();
-    const e = String(email || '').trim().toLowerCase();
-    const p = String(password || '');
+    const identifier = String(req.body?.identifier || '').trim().toLowerCase();
+    if (!identifier) return res.status(400).json({ error: 'Identifier is required' });
+    if (EMAIL_REGEX.test(identifier)) return res.json({ success: true, email: identifier });
 
-    if (!USERNAME_REGEX.test(u)) {
-      return res.status(400).json({ error: 'Invalid username format' });
-    }
-    if (!EMAIL_REGEX.test(e)) {
-      return res.status(400).json({ error: 'Invalid email format' });
-    }
-    if (!isStrongPassword(p)) {
-      return res.status(400).json({
-        error: 'Weak password',
-        message: 'Password must be 8+ chars and include uppercase, lowercase, number, and special character'
-      });
-    }
-    db.get('SELECT id FROM users WHERE email = ? OR username = ?', [e, u], async (err, existing) => {
-      if (err) return res.status(500).json({ error: 'Database error', message: err.message });
-      if (existing) return res.status(409).json({ error: 'User with this email or username already exists' });
-      const { salt, hash } = hashPassword(p);
-      const newsletter = newsletterOptIn ? 1 : 0;
-      const userId = crypto.randomUUID();
+    const user = await dbGet('SELECT email FROM users WHERE lower(username)=lower(?) LIMIT 1', [identifier]);
+    if (!user || !user.email) return res.status(404).json({ error: 'User not found' });
+    return res.json({ success: true, email: String(user.email).toLowerCase() });
+  } catch {
+    return res.status(500).json({ error: 'Resolve identifier failed' });
+  }
+});
 
-      db.run(
-        'INSERT INTO users (id, username, email, password_hash, password_salt, newsletter_opt_in, email_verified) VALUES (?, ?, ?, ?, ?, ?, 1)',
-        [userId, u, e, hash, salt, newsletter],
-        function (insertErr) {
-          if (insertErr) return res.status(500).json({ error: 'Failed to create account', message: insertErr.message });
-          const user = { id: userId, username: u, email: e };
-          const token = issueToken(user);
-          return res.json({ success: true, token, user, message: 'Account created successfully' });
-        }
+router.post('/firebase-register-profile', async (req, res) => {
+  try {
+    if (!FIREBASE_ENABLED) return res.status(503).json({ error: 'Firebase is not configured on server' });
+
+    const idToken = String(req.body?.idToken || '').trim();
+    const username = String(req.body?.username || '').trim();
+    if (!idToken) return res.status(400).json({ error: 'Missing Firebase ID token' });
+    if (!USERNAME_REGEX.test(username)) return res.status(400).json({ error: 'Invalid username format' });
+
+    const claims = await verifyFirebaseIdToken(idToken);
+    const email = String(claims.email || '').trim().toLowerCase();
+    if (!EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ error: 'Firebase token does not contain a valid email' });
+    }
+
+    const byUsername = await dbGet('SELECT id, email FROM users WHERE lower(username)=lower(?) LIMIT 1', [username]);
+    if (byUsername && String(byUsername.email || '').toLowerCase() !== email) {
+      return res.status(409).json({ error: 'Username is already taken' });
+    }
+
+    const byEmail = await dbGet('SELECT id FROM users WHERE lower(email)=lower(?) LIMIT 1', [email]);
+    if (byEmail) {
+      await dbRun(
+        'UPDATE users SET username = ?, email_verified = ? WHERE id = ?',
+        [username, claims.email_verified ? 1 : 0, byEmail.id]
       );
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Registration request failed', message: error.message });
+      return res.json({ success: true });
+    }
+
+    const userId = crypto.randomUUID();
+    const { salt, hash } = hashPassword(crypto.randomUUID());
+    await dbRun(
+      'INSERT INTO users (id, username, email, password_hash, password_salt, newsletter_opt_in, email_verified) VALUES (?, ?, ?, ?, ?, 0, ?)',
+      [userId, username, email, hash, salt, claims.email_verified ? 1 : 0]
+    );
+    return res.json({ success: true });
+  } catch {
+    return res.status(500).json({ error: 'Failed to save Firebase profile' });
   }
 });
 
-router.post('/register-resend', (req, res) => {
-  return res.status(410).json({
-    error: 'Email verification is temporarily disabled',
-    message: 'Registration now creates account instantly.'
-  });
-});
-
-router.post('/register-verify', (req, res) => {
-  return res.status(410).json({
-    error: 'Email verification is temporarily disabled',
-    message: 'Registration now creates account instantly.'
-  });
-});
-
-router.post('/login', (req, res) => {
+router.post('/login-firebase', async (req, res) => {
   try {
-    const { email, identifier, password } = req.body || {};
-    const idf = normalizeIdentifier(identifier || email);
-    const p = String(password || '');
-    if (!idf) return res.status(400).json({ error: 'Email or username is required' });
-    if (!p) return res.status(400).json({ error: 'Password is required' });
+    if (!FIREBASE_ENABLED) return res.status(503).json({ error: 'Firebase is not configured on server' });
 
-    findUserByIdentifier(idf, (err, user) => {
-      if (err) return res.status(500).json({ error: 'Database error', message: err.message });
-      if (!user) return res.status(404).json({ error: 'Account not found' });
-      if (!user.email_verified) return res.status(403).json({ error: 'Email not verified' });
-      if (!verifyPassword(p, user.password_salt, user.password_hash)) {
-        return res.status(401).json({ error: 'Incorrect password' });
-      }
+    const { idToken } = req.body || {};
+    if (!idToken) return res.status(400).json({ error: 'Missing Firebase ID token' });
 
-      const safeUser = { id: user.id, username: user.username, email: user.email };
-      const token = issueToken(safeUser);
-      return res.json({ success: true, token, user: safeUser });
-    });
-  } catch (error) {
-    res.status(500).json({ error: 'Login failed', message: error.message });
+    const claims = await verifyFirebaseIdToken(idToken);
+    const email = String(claims.email || '').trim().toLowerCase();
+    const emailVerified = Boolean(claims.email_verified);
+    if (!email || !EMAIL_REGEX.test(email)) {
+      return res.status(400).json({ error: 'Firebase token does not contain a valid email' });
+    }
+    if (!emailVerified) {
+      return res.status(401).json({ error: 'Please verify your email in Firebase first' });
+    }
+
+    let user = await dbGet('SELECT id, username, email FROM users WHERE lower(email)=lower(?) LIMIT 1', [email]);
+    if (!user) {
+      const username = await pickUniqueUsername(claims.name || email.split('@')[0] || 'user');
+      const userId = crypto.randomUUID();
+      const { salt, hash } = hashPassword(crypto.randomUUID());
+      await dbRun(
+        'INSERT INTO users (id, username, email, password_hash, password_salt, newsletter_opt_in, email_verified) VALUES (?, ?, ?, ?, ?, 0, 1)',
+        [userId, username, email, hash, salt]
+      );
+      user = { id: userId, username, email };
+    }
+
+    const token = issueToken(user);
+    return res.json({ success: true, token, user });
+  } catch {
+    return res.status(401).json({ error: 'Firebase login failed' });
   }
-});
-
-router.post('/send-login-code', (req, res) => {
-  return res.status(410).json({
-    error: 'Login by email code is temporarily disabled',
-    message: 'Use password login.'
-  });
-});
-
-router.post('/login-with-code', (req, res) => {
-  return res.status(410).json({
-    error: 'Login by email code is temporarily disabled',
-    message: 'Use password login.'
-  });
 });
 
 router.get('/me', (req, res) => {
@@ -145,10 +165,12 @@ router.get('/me', (req, res) => {
     const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
     if (!token) return res.status(401).json({ error: 'Missing token' });
     const decoded = jwt.verify(token, JWT_SECRET);
-    res.json({ id: decoded.id, email: decoded.email, username: decoded.username, role: decoded.role });
-  } catch (error) {
-    res.status(401).json({ error: 'Invalid token' });
+    return res.json({ id: decoded.id, email: decoded.email, username: decoded.username, role: decoded.role });
+  } catch {
+    return res.status(401).json({ error: 'Invalid token' });
   }
 });
+
+router.post('/logout', (req, res) => res.json({ success: true, message: 'Logged out' }));
 
 module.exports = router;

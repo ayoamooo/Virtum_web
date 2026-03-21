@@ -48,6 +48,7 @@ app.use(express.static(path.join(__dirname, '..')));
 
 // Apply audit logging to all API routes
 app.use('/api', middlewares.auditLog);
+app.use('/api/auth', middlewares.checkAuthRateLimit);
 
 // Health check (no DB probe to keep fast; add /api/health/db if needed)
 app.get('/api/health', (req, res) => {

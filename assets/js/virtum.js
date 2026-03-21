@@ -394,7 +394,7 @@ function showScreen(screenId) {
     
     // Update nav buttons - hide on landing/auth screens
     const navButtons = document.getElementById('nav-buttons');
-    const authScreens = ['landing-screen', 'login-screen', 'register-screen', 'verify-register-screen', 'verify-login-screen'];
+    const authScreens = ['landing-screen', 'login-screen', 'register-screen', 'verify-email-wait-screen', 'firebase-reset-screen'];
     const navVisible = !authScreens.includes(screenId);
     document.body.classList.toggle('nav-visible', navVisible);
     
@@ -444,15 +444,18 @@ function showScreen(screenId) {
         const createBtn = document.getElementById('create-account-btn');
         if (createBtn) createBtn.textContent = 'Create account';
     }
-    if (screenId === 'verify-register-screen') {
-        const pendingEmail = localStorage.getItem('pendingVerifyEmail') || '';
-        const label = document.getElementById('register-verify-email-label');
-        if (label) label.textContent = pendingEmail || '-';
+    if (screenId === 'login-screen') {
+        setTimeout(() => document.getElementById('login-email')?.focus(), 140);
     }
-    if (screenId === 'verify-login-screen') {
-        const pendingIdentifier = localStorage.getItem('pendingLoginIdentifier') || '';
-        const label = document.getElementById('login-code-identifier-label');
-        if (label) label.textContent = pendingIdentifier || '-';
+    if (screenId === 'verify-email-wait-screen') {
+        const label = document.getElementById('verify-wait-email-label');
+        if (label) label.textContent = localStorage.getItem('pendingFirebaseVerifyEmail') || '-';
+    }
+    if (screenId === 'firebase-reset-screen') {
+        const resetEmail = document.getElementById('firebase-reset-email');
+        const loginEmail = (document.getElementById('login-email')?.value || '').trim();
+        if (resetEmail && loginEmail) resetEmail.value = loginEmail;
+        setTimeout(() => document.getElementById('firebase-reset-email')?.focus(), 140);
     }
 
     refreshAuthNavVisibility();
@@ -1345,13 +1348,27 @@ function getBiomarkerTrend(metricKey) {
     return delta > 0 ? `Increasing by ${delta} over recent records.` : `Decreasing by ${Math.abs(delta)} over recent records.`;
 }
 
-function logout() {
+async function logout() {
+    const token = localStorage.getItem('authToken') || '';
+    if (token) {
+        try {
+            await apiJson(`${API_URL}/api/auth/logout`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`
+                }
+            });
+        } catch (e) {
+            // local logout still proceeds
+        }
+    }
     showToast('Logged out successfully', 'info');
     clearSessionStorage();
     setTimeout(() => {
         showScreen('login-screen');
         console.log('🚪 Logged out');
-    }, 800);
+    }, 300);
 }
 
 async function restoreSessionFromToken() {
@@ -1409,6 +1426,13 @@ window.onload = async () => {
     if (waterProgress) {
         waterProgress.style.width = `${waterPercent}%`;
     }
+    if (typeof initFirebaseEmailAuth === 'function') {
+        try {
+            await initFirebaseEmailAuth();
+        } catch (e) {
+            console.warn('Firebase init skipped:', e.message);
+        }
+    }
     fillGoalInputs();
     renderGoalsProgress({
         waterIntake: waterIntake,
@@ -1438,7 +1462,6 @@ window.onload = async () => {
             });
         });
     }
-
     updateConnectionBanner();
     window.addEventListener('online', () => {
         updateConnectionBanner();

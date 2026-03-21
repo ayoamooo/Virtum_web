@@ -239,6 +239,16 @@ async function sendLoginCodeEmail(email, username, code) {
   await sendTransactionalEmail({ to: email, subject, text, html: htmlBody });
 }
 
+async function sendPasswordResetEmail(email, username, code) {
+  if (!isEmailConfigured()) {
+    throw new Error('Email is not configured');
+  }
+  const subject = 'Virtum password reset code';
+  const text = `Hello ${username},\n\nYour password reset code is: ${code}\n\nThis code expires in 10 minutes.\n\nIf you did not request this, ignore this email.`;
+  const htmlBody = `<p>Hello <strong>${username}</strong>,</p><p>Your password reset code is:</p><h2 style="letter-spacing:2px">${code}</h2><p>This code expires in 10 minutes.</p><p>If you did not request this, ignore this email.</p>`;
+  await sendTransactionalEmail({ to: email, subject, text, html: htmlBody });
+}
+
 /**
  * Maps transport errors to a short message for API clients.
  */
@@ -248,11 +258,11 @@ function smtpErrorToUserMessage(err) {
   const msg = String(err.message || err);
 
   if (err.provider === 'resend' || /resend/i.test(msg)) {
+    if (/domain|verify|not allowed|from/i.test(msg)) {
+      return 'Resend sender is not allowed. Verify your domain in Resend dashboard, or use onboarding@resend.dev as RESEND_FROM for testing.';
+    }
     if (err.statusCode === 401 || err.statusCode === 403) {
       return 'Resend API key invalid or forbidden. Check RESEND_API_KEY in backend/.env.';
-    }
-    if (/domain|verify|not allowed/i.test(msg)) {
-      return 'Resend: verify your domain in Resend dashboard, or use onboarding@resend.dev as EMAIL_FROM for testing.';
     }
     return msg.length < 220 ? msg : 'Resend could not send the email. Check RESEND_API_KEY and sender settings in .env.';
   }
@@ -290,6 +300,7 @@ module.exports = {
   isEmailConfigured,
   sendVerificationEmail,
   sendLoginCodeEmail,
+  sendPasswordResetEmail,
   smtpErrorToUserMessage,
   getMailMode
 };

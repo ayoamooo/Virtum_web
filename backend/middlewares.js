@@ -45,6 +45,28 @@ const checkRateLimit = (req, res, next) => {
   next();
 };
 
+const authRateLimiter = {};
+const AUTH_MAX_PER_MINUTE = 20;
+const AUTH_MAX_PER_10MIN = 80;
+
+const checkAuthRateLimit = (req, res, next) => {
+  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  const identifier = String(req.body?.email || req.body?.identifier || req.body?.username || 'anon').toLowerCase().trim();
+  const key = `${ip}:${identifier}`;
+  const now = Date.now();
+  const oneMinuteAgo = now - 60000;
+  const tenMinutesAgo = now - 10 * 60000;
+  const row = authRateLimiter[key] || [];
+  const cleaned = row.filter((t) => t > tenMinutesAgo);
+  authRateLimiter[key] = cleaned;
+  const minuteCount = cleaned.filter((t) => t > oneMinuteAgo).length;
+  if (minuteCount >= AUTH_MAX_PER_MINUTE || cleaned.length >= AUTH_MAX_PER_10MIN) {
+    return res.status(429).json({ error: 'Too many auth attempts. Try again later.' });
+  }
+  cleaned.push(now);
+  next();
+};
+
 // Input validation middleware
 const validateInput = (schema) => {
   return (req, res, next) => {
@@ -147,4 +169,4 @@ const auditLog = (req, res, next) => {
   next();
 };
 
-module.exports = { checkRateLimit, validateInput, errorHandler, auditLog };
+module.exports = { checkRateLimit, checkAuthRateLimit, validateInput, errorHandler, auditLog };

@@ -3,13 +3,16 @@ const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
 /** Practical email validation (RFC-style, not exhaustive) */
 const EMAIL_REGEX = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
 
+let FIREBASE_RUNTIME_CONFIG = null;
+let FIREBASE_INITIALIZED = false;
+
 function clearRegisterFieldErrors() {
     const ids = ['register-username', 'register-email', 'register-password', 'register-password-confirm'];
     ids.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.classList.remove('input-error');
     });
-    ['register-username-error', 'register-email-error', 'register-password-error', 'register-confirm-error', 'register-terms-error', 'register-code-error'].forEach((id) => {
+    ['register-username-error', 'register-email-error', 'register-password-error', 'register-confirm-error', 'register-terms-error'].forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.textContent = '';
     });
@@ -49,298 +52,240 @@ function updateRegisterPasswordRules() {
     });
 }
 
-async function register() {
-    const usernameInput = document.getElementById('register-username');
-    const emailInput = document.getElementById('register-email');
-    const passwordInput = document.getElementById('register-password');
-    const confirmInput = document.getElementById('register-password-confirm');
-    const termsInput = document.getElementById('register-terms');
-    const newsletterInput = document.getElementById('register-newsletter');
-    const createBtn = document.getElementById('create-account-btn');
-
-    if (!usernameInput || !emailInput || !passwordInput || !confirmInput || !termsInput) {
-        showToast('Form not loaded', 'error');
-        return;
-    }
-
-    const restoreSubmitBtn = () => {
-        if (!createBtn) return;
-        createBtn.disabled = false;
-        createBtn.textContent = 'Create account';
+function setButtonLoading(btn, loadingText) {
+    if (!btn) return () => {};
+    const original = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = loadingText;
+    return () => {
+        btn.disabled = false;
+        btn.textContent = original;
     };
-
-    clearRegisterFieldErrors();
-    updateRegisterPasswordRules();
-
-    const username = usernameInput.value.trim();
-    const email = emailInput.value.trim().toLowerCase();
-    const password = passwordInput.value;
-    const confirm = confirmInput.value;
-
-    let valid = true;
-
-    if (!username) {
-        setRegisterFieldError('register-username', 'register-username-error', 'Enter a username.');
-        valid = false;
-    } else if (!USERNAME_REGEX.test(username)) {
-        setRegisterFieldError('register-username', 'register-username-error', 'Use 3-20 characters: letters, numbers, underscore only.');
-        valid = false;
-    }
-
-    if (!email) {
-        setRegisterFieldError('register-email', 'register-email-error', 'Enter your email address.');
-        valid = false;
-    } else if (!EMAIL_REGEX.test(email)) {
-        setRegisterFieldError('register-email', 'register-email-error', 'Enter a valid email (e.g. name@domain.com).');
-        valid = false;
-    }
-
-    const pwdCheck = validatePasswordRules(password);
-    if (!password) {
-        setRegisterFieldError('register-password', 'register-password-error', 'Enter a password.');
-        valid = false;
-    } else if (!pwdCheck.ok) {
-        setRegisterFieldError('register-password', 'register-password-error', 'Meet all password rules below.');
-        valid = false;
-    }
-
-    if (!confirm) {
-        setRegisterFieldError('register-password-confirm', 'register-confirm-error', 'Confirm your password.');
-        valid = false;
-    } else if (password !== confirm) {
-        setRegisterFieldError('register-password-confirm', 'register-confirm-error', 'Passwords do not match.');
-        valid = false;
-    }
-
-    if (!termsInput.checked) {
-        const te = document.getElementById('register-terms-error');
-        if (te) te.textContent = 'You must accept the Terms and Privacy Policy.';
-        valid = false;
-    }
-
-    if (!valid) {
-        showToast('Please fix the highlighted fields.', 'error');
-        return;
-    }
-
-    if (createBtn) {
-        createBtn.disabled = true;
-        createBtn.textContent = 'Sending code…';
-    }
-
-    let res;
-    try {
-        res = await apiJson(`${API_URL}/api/auth/register-request`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username,
-                email,
-                password,
-                newsletterOptIn: !!(newsletterInput && newsletterInput.checked)
-            })
-        });
-    } catch (e) {
-        console.error(e);
-        showToast(e.message || 'Request failed', 'error');
-        restoreSubmitBtn();
-        return;
-    }
-
-    if (!res.ok) {
-        const msg = (res.data && (res.data.message || res.data.error)) || 'Registration failed';
-        showToast(msg, 'error');
-        restoreSubmitBtn();
-        return;
-    }
-
-    localStorage.setItem('pendingVerifyEmail', email);
-    localStorage.setItem('pendingVerifyUsername', username);
-    if (createBtn) {
-        createBtn.disabled = false;
-        createBtn.textContent = 'Create account';
-    }
-    if (res.data && res.data.user && res.data.token) {
-        setSession(res.data.user, res.data.token);
-        const userNameEl = document.getElementById('user-name');
-        if (userNameEl) userNameEl.textContent = res.data.user.username;
-        localStorage.removeItem('pendingVerifyEmail');
-        localStorage.removeItem('pendingVerifyUsername');
-        showToast('Account created successfully!', 'success');
-        setTimeout(() => showScreen('dashboard-screen'), 600);
-        return;
-    }
-    showToast('Account created. You can login now.', 'success');
-    showScreen('login-screen');
 }
 
-async function verifyRegistration() {
-    const email = localStorage.getItem('pendingVerifyEmail') || '';
-    const codeEl = document.getElementById('register-verify-code');
-    const code = codeEl ? codeEl.value.trim() : '';
-    if (!email) {
-        showToast('No pending verification email found.', 'error');
-        return;
-    }
-    if (!/^\d{6}$/.test(code)) {
-        setRegisterFieldError('register-verify-code', 'register-code-error', 'Enter a valid 6-digit code.');
-        return;
-    }
+function firebaseAuthMessage(err, fallback) {
+    const code = String(err && err.code ? err.code : '');
+    if (code === 'auth/invalid-credential' || code === 'auth/wrong-password') return 'Invalid email/username or password.';
+    if (code === 'auth/user-not-found') return 'Account not found. Check email/username or register first.';
+    if (code === 'auth/too-many-requests') return 'Too many login attempts. Try again later or reset password.';
+    if (code === 'auth/invalid-email') return 'Invalid email format.';
+    return (err && err.message) || fallback || 'Firebase auth failed';
+}
 
-    const res = await apiJson(`${API_URL}/api/auth/register-verify`, {
+async function getFirebaseConfig() {
+    if (FIREBASE_RUNTIME_CONFIG) return FIREBASE_RUNTIME_CONFIG;
+    const res = await apiJson(`${API_URL}/api/auth/firebase-config`);
+    if (!res.ok || !res.data) return { enabled: false };
+    FIREBASE_RUNTIME_CONFIG = res.data;
+    return FIREBASE_RUNTIME_CONFIG;
+}
+
+async function ensureFirebaseAuth() {
+    const cfg = await getFirebaseConfig();
+    if (!cfg.enabled) throw new Error('Firebase is not configured on server');
+    if (!window.firebase || !window.firebase.auth) throw new Error('Firebase SDK is not loaded');
+    if (!FIREBASE_INITIALIZED) {
+        window.firebase.initializeApp({
+            apiKey: cfg.apiKey,
+            authDomain: cfg.authDomain,
+            appId: cfg.appId
+        });
+        FIREBASE_INITIALIZED = true;
+    }
+    return window.firebase.auth();
+}
+
+async function exchangeFirebaseTokenForAppSession(idToken) {
+    const res = await apiJson(`${API_URL}/api/auth/login-firebase`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code })
+        body: JSON.stringify({ idToken })
     });
-    if (!res.ok) {
-        const msg = (res.data && (res.data.message || res.data.error)) || 'Verification failed';
-        setRegisterFieldError('register-verify-code', 'register-code-error', msg);
-        return;
+    if (!res.ok || !res.data || !res.data.user || !res.data.token) {
+        const msg = (res.data && (res.data.message || res.data.error)) || 'Firebase login failed';
+        throw new Error(msg);
     }
     setSession(res.data.user, res.data.token);
-    localStorage.removeItem('pendingVerifyEmail');
-    localStorage.removeItem('pendingVerifyUsername');
-    if (codeEl) codeEl.value = '';
     const userNameEl = document.getElementById('user-name');
-    if (userNameEl && res.data.user) userNameEl.textContent = res.data.user.username;
-    localStorage.removeItem('pendingLoginIdentifier');
-    showToast('Account verified successfully!', 'success');
-    setTimeout(() => showScreen('dashboard-screen'), 600);
+    if (userNameEl) userNameEl.textContent = res.data.user.username;
 }
 
-async function submitRegisterVerification() {
-    await verifyRegistration();
+async function registerWithFirebaseEmail() {
+    const createBtn = document.getElementById('create-account-btn');
+    const restoreBtn = setButtonLoading(createBtn, 'Creating...');
+    const email = (document.getElementById('register-email')?.value || '').trim().toLowerCase();
+    const password = document.getElementById('register-password')?.value || '';
+    const username = (document.getElementById('register-username')?.value || '').trim();
+    const termsChecked = !!document.getElementById('register-terms')?.checked;
+
+    if (!USERNAME_REGEX.test(username)) {
+        restoreBtn();
+        return showToast('Use a valid username first', 'error');
+    }
+    if (!EMAIL_REGEX.test(email)) {
+        restoreBtn();
+        return showToast('Enter a valid email first', 'error');
+    }
+    if (!validatePasswordRules(password).ok) {
+        restoreBtn();
+        return showToast('Meet all password rules first', 'error');
+    }
+    if (!termsChecked) {
+        restoreBtn();
+        return showToast('Accept Terms and Privacy Policy', 'error');
+    }
+
+    try {
+        const auth = await ensureFirebaseAuth();
+        const cred = await auth.createUserWithEmailAndPassword(email, password);
+        if (cred.user) {
+            await cred.user.updateProfile({ displayName: username });
+            const idToken = await cred.user.getIdToken(true);
+            const profileRes = await apiJson(`${API_URL}/api/auth/firebase-register-profile`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ idToken, username })
+            });
+            if (!profileRes.ok) {
+                const msg = (profileRes.data && (profileRes.data.message || profileRes.data.error)) || 'Failed to save username';
+                throw new Error(msg);
+            }
+            await cred.user.sendEmailVerification();
+        }
+        await auth.signOut();
+        localStorage.setItem('pendingFirebaseVerifyEmail', email);
+        showToast('Verification email sent. Confirm it to continue.', 'success');
+        setTimeout(() => showScreen('verify-email-wait-screen'), 300);
+    } catch (e) {
+        showToast(firebaseAuthMessage(e, 'Firebase register failed'), 'error');
+    } finally {
+        restoreBtn();
+    }
 }
 
-async function resendRegisterCode(event) {
-    const username = localStorage.getItem('pendingVerifyUsername') || '';
-    const email = localStorage.getItem('pendingVerifyEmail') || '';
-    if (!email || !username) {
-        showToast('No pending verification found. Register again.', 'error');
+async function loginWithFirebaseEmail() {
+    const loginBtn = document.getElementById('firebase-login-btn');
+    const restoreBtn = setButtonLoading(loginBtn, 'Logging in...');
+    const identifier = (document.getElementById('login-email')?.value || '').trim();
+    const password = document.getElementById('login-password')?.value || '';
+    if (!identifier) {
+        restoreBtn();
+        return showToast('Enter email or username', 'error');
+    }
+    if (!password) {
+        restoreBtn();
+        return showToast('Enter password', 'error');
+    }
+    try {
+        let email = identifier.toLowerCase();
+        if (!EMAIL_REGEX.test(email)) {
+            const resolved = await apiJson(`${API_URL}/api/auth/firebase-resolve-identifier`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ identifier })
+            });
+            if (!resolved.ok || !resolved.data?.email) throw new Error('Invalid credentials');
+            email = String(resolved.data.email).toLowerCase();
+        }
+
+        const auth = await ensureFirebaseAuth();
+        const cred = await auth.signInWithEmailAndPassword(email, password);
+        const user = cred.user;
+        if (!user) throw new Error('Firebase user is missing');
+        await user.reload();
+        if (!user.emailVerified) {
+            await user.sendEmailVerification();
+            await auth.signOut();
+            localStorage.setItem('pendingFirebaseVerifyEmail', email);
+            showToast('Email not verified. Check your inbox and spam folder.', 'error');
+            setTimeout(() => showScreen('verify-email-wait-screen'), 250);
+            return;
+        }
+        const idToken = await user.getIdToken(true);
+        await exchangeFirebaseTokenForAppSession(idToken);
+        showToast('Welcome with Firebase!', 'success');
+        setTimeout(() => showScreen('dashboard-screen'), 300);
+    } catch (e) {
+        showToast(firebaseAuthMessage(e, 'Firebase login failed'), 'error');
+    } finally {
+        restoreBtn();
+    }
+}
+
+async function requestFirebasePasswordReset() {
+    const sendBtn = document.getElementById('firebase-reset-send-btn');
+    const restoreBtn = setButtonLoading(sendBtn, 'Sending...');
+    const email = (document.getElementById('firebase-reset-email')?.value || '').trim().toLowerCase();
+    if (!EMAIL_REGEX.test(email)) {
+        restoreBtn();
+        showToast('Enter email for password reset', 'error');
         return;
     }
-    const btn = event && event.currentTarget ? event.currentTarget : null;
-    const original = btn ? btn.textContent : '';
-    if (btn) {
-        btn.disabled = true;
-        btn.textContent = 'Sending...';
+    try {
+        const auth = await ensureFirebaseAuth();
+        await auth.sendPasswordResetEmail(email);
+        showToast('Firebase password reset email sent.', 'success');
+        setTimeout(() => showScreen('login-screen'), 350);
+    } catch (e) {
+        showToast(firebaseAuthMessage(e, 'Could not send reset email'), 'error');
+    } finally {
+        restoreBtn();
     }
-    const res = await apiJson(`${API_URL}/api/auth/register-resend`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-    });
-    if (btn) {
-        btn.disabled = false;
-        btn.textContent = original || 'Send new code';
-    }
-    if (!res.ok) {
-        const msg = (res.data && (res.data.message || res.data.error)) || 'Failed to resend code';
-        showToast(msg, 'error');
+}
+
+async function checkFirebaseVerificationAndContinue() {
+    const verifyBtn = document.getElementById('firebase-verify-continue-btn');
+    const restoreBtn = setButtonLoading(verifyBtn, 'Checking...');
+    localStorage.removeItem('pendingFirebaseVerifyEmail');
+    showToast('Great. Now login with your email and password.', 'success');
+    setTimeout(() => showScreen('login-screen'), 250);
+    restoreBtn();
+}
+
+async function resendFirebaseVerificationEmail() {
+    const resendBtn = document.getElementById('firebase-verify-resend-btn');
+    const restoreBtn = setButtonLoading(resendBtn, 'Sending...');
+    const email = localStorage.getItem('pendingFirebaseVerifyEmail') || '';
+    if (!EMAIL_REGEX.test(email)) {
+        restoreBtn();
+        showToast('No pending verification email found. Register again.', 'error');
+        showScreen('register-screen');
         return;
     }
-    showToast('New verification code sent.', 'success');
+    const password = window.prompt('Enter your password to resend verification email:') || '';
+    if (!password) {
+        restoreBtn();
+        return;
+    }
+    try {
+        const auth = await ensureFirebaseAuth();
+        const cred = await auth.signInWithEmailAndPassword(email, password);
+        const user = cred.user;
+        if (!user) throw new Error('Firebase user is missing');
+        await user.sendEmailVerification();
+        await auth.signOut();
+        showToast('Verification email sent again.', 'success');
+    } catch (e) {
+        showToast(firebaseAuthMessage(e, 'Could not resend verification email'), 'error');
+    } finally {
+        restoreBtn();
+    }
+}
+
+async function register() {
+    await registerWithFirebaseEmail();
 }
 
 async function login() {
-    const usernameInput = document.getElementById('login-email');
-    const passwordInput = document.getElementById('login-password');
-
-    const identifier = usernameInput.value.trim();
-    const password = passwordInput.value.trim();
-
-    if (!identifier) {
-        showToast('Please enter email or username', 'error');
-        return;
-    }
-    if (!password) {
-        showToast('Enter your password', 'error');
-        return;
-    }
-
-    const res = await apiJson(`${API_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, password })
-    });
-
-    if (!res.ok) {
-        const msg = (res.data && (res.data.message || res.data.error)) || 'Login failed';
-        showToast(msg, 'error');
-        return;
-    }
-
-    setSession(res.data.user, res.data.token);
-    document.getElementById('user-name').textContent = res.data.user.username;
-    usernameInput.value = '';
-    passwordInput.value = '';
-    showToast('Welcome back!', 'success');
-    setTimeout(() => showScreen('dashboard-screen'), 700);
+    await loginWithFirebaseEmail();
 }
 
-async function sendLoginCode(event) {
-    const identifierInput = document.getElementById('login-email');
-    const sendBtn = event && event.currentTarget ? event.currentTarget : null;
-    const originalBtnText = sendBtn ? sendBtn.textContent : '';
-    const identifier = (identifierInput && identifierInput.value.trim())
-        ? identifierInput.value.trim()
-        : (localStorage.getItem('pendingLoginIdentifier') || '').trim();
-    if (!identifier) {
-        showToast('Enter email or username first', 'error');
-        return;
+async function initFirebaseEmailAuth() {
+    const cfg = await getFirebaseConfig();
+    const loginBtn = document.getElementById('firebase-login-btn');
+    const registerBtn = document.getElementById('create-account-btn');
+    if (cfg.enabled) {
+        if (loginBtn) loginBtn.style.display = 'block';
+        if (registerBtn) registerBtn.style.display = 'block';
     }
-    if (sendBtn) {
-        sendBtn.disabled = true;
-        sendBtn.textContent = 'Sending...';
-    }
-    const res = await apiJson(`${API_URL}/api/auth/send-login-code`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier })
-    });
-    if (sendBtn) {
-        sendBtn.disabled = false;
-        sendBtn.textContent = originalBtnText || 'Send login code';
-    }
-    if (!res.ok) {
-        const msg = (res.data && (res.data.message || res.data.error)) || 'Failed to send login code';
-        showToast(msg, 'error');
-        return;
-    }
-    localStorage.setItem('pendingLoginIdentifier', identifier);
-    const label = document.getElementById('login-code-identifier-label');
-    if (label) label.textContent = identifier;
-    showToast('Login code sent. Check your email.', 'success');
-    showScreen('verify-login-screen');
-}
-
-async function submitLoginCodeVerification() {
-    const identifier = localStorage.getItem('pendingLoginIdentifier') || '';
-    const codeInput = document.getElementById('login-verify-code');
-    const code = codeInput ? codeInput.value.trim() : '';
-    if (!identifier) {
-        showToast('No pending login code request. Send a code first.', 'error');
-        return;
-    }
-    if (!/^\d{6}$/.test(code)) {
-        setRegisterFieldError('login-verify-code', 'login-code-error', 'Enter a valid 6-digit code.');
-        return;
-    }
-    const res = await apiJson(`${API_URL}/api/auth/login-with-code`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, code })
-    });
-    if (!res.ok) {
-        const msg = (res.data && (res.data.message || res.data.error)) || 'Code login failed';
-        setRegisterFieldError('login-verify-code', 'login-code-error', msg);
-        return;
-    }
-    setSession(res.data.user, res.data.token);
-    localStorage.removeItem('pendingLoginIdentifier');
-    if (codeInput) codeInput.value = '';
-    const userNameEl = document.getElementById('user-name');
-    if (userNameEl && res.data.user) userNameEl.textContent = res.data.user.username;
-    showToast('Welcome back!', 'success');
-    setTimeout(() => showScreen('dashboard-screen'), 500);
 }
