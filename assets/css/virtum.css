@@ -1004,7 +1004,7 @@ input:focus {
 }
 body.nav-visible #nav-buttons {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: center;
 }
 /* After login: only Dashboard + Jeffrey in the bottom bar */
@@ -1111,12 +1111,15 @@ canvas {
     }
     .metric-card { padding: 16px; }
     .metric-value { font-size: 28px; }
-    .nav-buttons { 
+    #nav-buttons { 
         bottom: 10px; 
         padding: 8px 12px;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
         max-width: calc(100% - 20px);
         gap: 6px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        -webkit-overflow-scrolling: touch;
     }
     .nav-btn { 
         padding: 8px 12px; 
@@ -1162,11 +1165,14 @@ canvas {
     .metric-card { padding: 14px; }
     .metric-value { font-size: clamp(22px, 6.5vw, 28px); }
     .metric-label { font-size: 11px; }
-    .nav-buttons { 
+    #nav-buttons { 
         bottom: 8px; 
         padding: 6px 10px;
         max-width: calc(100% - 10px);
         gap: 4px;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overflow-y: hidden;
     }
     .nav-btn { 
         padding: 6px 10px; 
@@ -1239,15 +1245,11 @@ canvas {
 
 /* Very small screens */
 @media (max-width: 360px) {
-    .nav-buttons { 
-        flex-direction: column;
-        width: auto;
-        padding: 8px;
+    #nav-buttons {
+        flex-direction: row;
+        flex-wrap: nowrap;
     }
-    .nav-btn { 
-        width: 100%;
-        margin: 2px 0;
-    }
+    .nav-btn { margin: 0; }
 }
 
 /* Portrait orientation on mobile */
