@@ -1,15 +1,4 @@
-# Database
-*.db
-*.db-journal
-
 # Node modules
 node_modules/
 
-# Logs
-*.log
-npm-debug.log*
-
-# OS files
-.DS_Store
-Thumbs.db
 

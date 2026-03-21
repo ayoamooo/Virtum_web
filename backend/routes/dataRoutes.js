@@ -68,17 +68,19 @@ router.post('/custom', validateInput({
   bloodPressure: { type: 'string', pattern: /^\d{1,3}\/\d{1,3}$/, required: false },
   weight: { type: 'number', min: 20, max: 500, required: false },
   calorieIntake: { type: 'number', min: 0, max: 10000, required: false },
-  waterIntake: { type: 'number', min: 0, max: 100, required: false }
+  waterIntake: { type: 'number', min: 0, max: 100, required: false },
+  sleepHours: { type: 'number', min: 0, max: 24, required: false }
 }), (req, res) => {
-  const { steps, heartRate, bloodPressure, weight, calorieIntake, waterIntake } = req.body;
+  const { steps, heartRate, bloodPressure, weight, calorieIntake, waterIntake, sleepHours } = req.body;
   const userId = sanitizeUserId(req.body?.userId, 'testUser');
   
   console.log('📝 Received POST /api/data/custom');
   console.log('   userId:', userId);
   
   // At least one metric required
-  if (steps === undefined && heartRate === undefined && waterIntake === undefined && 
-      bloodPressure === undefined && weight === undefined && calorieIntake === undefined) {
+  if (steps === undefined && heartRate === undefined && waterIntake === undefined &&
+      bloodPressure === undefined && weight === undefined && calorieIntake === undefined &&
+      sleepHours === undefined) {
     return res.status(400).json({ error: 'At least one metric required' });
   }
 
@@ -99,6 +101,7 @@ router.post('/custom', validateInput({
         weight: weight !== undefined ? weight : (lastData.weight || 70),
         calorieIntake: calorieIntake !== undefined ? calorieIntake : (lastData.calorieIntake || 0),
         waterIntake: waterIntake !== undefined ? waterIntake : (lastData.waterIntake || 0),
+        sleepHours: sleepHours !== undefined ? sleepHours : (lastData.sleepHours || 0),
         weather: lastData.weather || 'unknown',
         location: lastData.location || 'unknown',
         accuracy: 'user-input',
