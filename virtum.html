@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="Virtum — personal wellness platform with Jeffrey AI. Track steps, heart rate, blood pressure, and hydration in one place.">
+    <meta name="keywords" content="wellness, health, AI, fitness, Virtum, Jeffrey, health metrics">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0071e3">
+    <meta property="og:title" content="Virtum — Virtual Health Companion">
+    <meta property="og:description" content="Wellness metrics, insights, and Jeffrey — your AI health assistant.">
+    <meta property="og:type" content="website">
+    <title>Virtum - Virtual Health Companion</title>
+    <link rel="manifest" href="manifest.webmanifest">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/virtum.css">
+    <link rel="stylesheet" href="assets/css/theme-apple.css">
+</head>
+<body>
+    <a href="#login-screen" class="skip-link">Skip to content</a>
+    <div id="connection-banner" class="connection-banner" role="status" aria-live="polite" hidden></div>
+    <div class="container">
+        <!-- Login Screen -->
+        <div class="screen active" id="login-screen">
+            <div class="header">
+                <h1 class="brand-title">
+                    <img src="assets/img/virtum-logo.png" alt="Virtum logo" class="brand-logo">
+                    <span>Virtum</span>
+                </h1>
+                <p>Your Personal Wellness Assistant</p>
+            </div>
+            <div class="content">
+                <div class="form-group">
+                    <label>Email or Username</label>
+                    <input type="text" id="login-email" placeholder="Enter email or username" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="login-password" placeholder="Enter your password">
+                </div>
+                <button class="btn" onclick="login()">Login</button>
+                <button class="btn btn-secondary" onclick="showScreen('register-screen')">Create Account</button>
+                <p class="legal-footer">
+                    <a href="terms.html" target="_blank" rel="noopener noreferrer">Terms of Service</a>
+                    <span aria-hidden="true"> · </span>
+                    <a href="privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+                </p>
+            </div>
+        </div>
+
+        <!-- Register Screen -->
+        <div class="screen" id="register-screen">
+            <div class="header header-with-back">
+                <button class="back-btn" onclick="showScreen('login-screen')" aria-label="Go back">←</button>
+                <div class="header-content">
+                    <h1 class="header-title-with-logo">
+                        <img src="assets/img/virtum-logo.png" alt="Virtum logo" class="header-logo">
+                        <span>Create Account</span>
+                    </h1>
+                    <p>Create your Virtum account</p>
+                </div>
+                <div style="width: 40px;"></div>
+            </div>
+            <div class="content">
+                <form id="register-form" class="auth-form" novalidate>
+                    <div class="product-notice" role="note">
+                        <strong>Privacy:</strong> Your sign-in credentials are stored on this device. Health metrics you save are stored on the Virtum server and linked to your account. See our <a href="privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.
+                    </div>
+
+                    <div class="form-group">
+                        <label for="register-username">Username <span class="req" aria-hidden="true">*</span></label>
+                        <input type="text" id="register-username" name="username" autocomplete="username"
+                            placeholder="e.g. alex_m"
+                            minlength="3" maxlength="20" pattern="[a-zA-Z0-9_]{3,20}"
+                            inputmode="text" autocapitalize="off" spellcheck="false"
+                            aria-describedby="register-username-hint register-username-error">
+                        <p class="field-hint" id="register-username-hint">3–20 characters: English letters, numbers, and underscore only (no spaces).</p>
+                        <p class="field-error" id="register-username-error" role="alert" aria-live="polite"></p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="register-email">Email <span class="req" aria-hidden="true">*</span></label>
+                        <input type="email" id="register-email" name="email" autocomplete="email"
+                            placeholder="you@company.com"
+                            inputmode="email" autocapitalize="off" spellcheck="false"
+                            aria-describedby="register-email-hint register-email-error">
+                        <p class="field-hint" id="register-email-hint">Use an email you access regularly — we use it for account recovery and service updates.</p>
+                        <p class="field-error" id="register-email-error" role="alert" aria-live="polite"></p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="register-password">Password <span class="req" aria-hidden="true">*</span></label>
+                        <div class="input-with-toggle">
+                            <input type="password" id="register-password" name="new-password" autocomplete="new-password"
+                                placeholder="Create a strong password"
+                                minlength="8" maxlength="128"
+                                aria-describedby="register-password-rules register-password-error">
+                            <button type="button" class="toggle-visibility" onclick="togglePassword('register-password', 'register-password-toggle')" id="register-password-toggle" aria-label="Show or hide password">👁️</button>
+                        </div>
+                        <ul class="password-rules" id="register-password-rules" aria-live="polite">
+                            <li data-rule="len">At least 8 characters</li>
+                            <li data-rule="lower">One lowercase letter (a–z)</li>
+                            <li data-rule="upper">One uppercase letter (A–Z)</li>
+                            <li data-rule="num">One number (0–9)</li>
+                            <li data-rule="sym">One special character (!@#$…)</li>
+                        </ul>
+                        <p class="field-error" id="register-password-error" role="alert" aria-live="polite"></p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="register-password-confirm">Confirm password <span class="req" aria-hidden="true">*</span></label>
+                        <div class="input-with-toggle">
+                            <input type="password" id="register-password-confirm" name="password-confirm" autocomplete="new-password"
+                                placeholder="Repeat your password"
+                                aria-describedby="register-confirm-error">
+                            <button type="button" class="toggle-visibility" onclick="togglePassword('register-password-confirm', 'register-confirm-toggle')" id="register-confirm-toggle" aria-label="Show or hide confirm password">👁️</button>
+                        </div>
+                        <p class="field-error" id="register-confirm-error" role="alert" aria-live="polite"></p>
+                    </div>
+
+                    <div class="form-group checkbox-row">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="register-terms" name="terms" required>
+                            <span>I agree to the <a href="terms.html" target="_blank" rel="noopener noreferrer">Terms of Service</a> and <a href="privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</span>
+                        </label>
+                        <p class="field-error" id="register-terms-error" role="alert" aria-live="polite"></p>
+                    </div>
+
+                    <div class="form-group checkbox-row optional">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="register-newsletter" name="newsletter">
+                            <span>Email me product tips and early access news (optional).</span>
+                        </label>
+                    </div>
+
+                    <button type="submit" id="create-account-btn" class="btn" aria-label="Create new account">Create account</button>
+                </form>
+                <div class="link" onclick="showScreen('login-screen')" role="button" tabindex="0" aria-label="Go to login screen">Already have an account? Login</div>
+            </div>
+        </div>
+
+        <!-- Register Verification Screen -->
+        <div class="screen" id="verify-register-screen">
+            <div class="header header-with-back">
+                <button class="back-btn" onclick="showScreen('register-screen')" aria-label="Go back">←</button>
+                <div class="header-content">
+                    <h1>Verify Email</h1>
+                    <p>Enter the 6-digit code from your inbox</p>
+                </div>
+                <div style="width: 40px;"></div>
+            </div>
+            <div class="content">
+                <div class="auth-form">
+                    <div class="product-notice" role="note">
+                        <strong>Email:</strong> <span id="register-verify-email-label">-</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="register-verify-code">Verification code <span class="req" aria-hidden="true">*</span></label>
+                        <input type="text" id="register-verify-code" inputmode="numeric" maxlength="6" placeholder="6-digit code">
+                        <p class="field-error" id="register-code-error" role="alert" aria-live="polite"></p>
+                    </div>
+                    <button class="btn" onclick="submitRegisterVerification()">Verify & create account</button>
+                    <button class="btn btn-secondary" onclick="resendRegisterCode(event)">Send new code</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Login Code Screen -->
+        <div class="screen" id="verify-login-screen">
+            <div class="header header-with-back">
+                <button class="back-btn" onclick="showScreen('login-screen')" aria-label="Go back">←</button>
+                <div class="header-content">
+                    <h1>Login With Code</h1>
+                    <p>We sent a one-time code</p>
+                </div>
+                <div style="width: 40px;"></div>
+            </div>
+            <div class="content">
+                <div class="auth-form">
+                    <div class="product-notice" role="note">
+                        <strong>For:</strong> <span id="login-code-identifier-label">-</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="login-verify-code">6-digit login code <span class="req" aria-hidden="true">*</span></label>
+                        <input type="text" id="login-verify-code" inputmode="numeric" maxlength="6" placeholder="6-digit code">
+                        <p class="field-error" id="login-code-error" role="alert" aria-live="polite"></p>
+                    </div>
+                    <button class="btn" onclick="submitLoginCodeVerification()">Login with code</button>
+                    <button class="btn btn-secondary" onclick="sendLoginCode(event)">Send new code</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Screen -->
+        <div class="screen" id="dashboard-screen">
+            <div class="dashboard-header dashboard-header-with-back">
+                <button class="back-btn" onclick="logout()" aria-label="Logout and go to login" style="position: relative; z-index: 2;">←</button>
+                <div class="dashboard-header-content">
+                    <div class="welcome-text">Welcome back,</div>
+                    <div class="user-name" id="user-name">User</div>
+                </div>
+                <div style="width: 40px;"></div>
+            </div>
+            <div class="content">
+                <div class="metrics-grid" id="metrics-grid" role="region" aria-label="Health metrics dashboard">
+                    <div class="loading" role="status" aria-live="polite">Loading metrics...</div>
+                </div>
+
+                <div class="mini-charts" aria-label="Health trend charts">
+                    <div class="mini-chart-card">
+                        <div class="mini-chart-title">Heart Rate (bpm)</div>
+                        <canvas id="heart-rate-chart"></canvas>
+                    </div>
+                    <div class="mini-chart-card">
+                        <div class="mini-chart-title">Steps (x1000)</div>
+                        <canvas id="steps-chart"></canvas>
+                    </div>
+                </div>
+
+                <div class="stats-card">
+                    <div class="stats-title">💧 Today's Water Goal</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="water-progress" style="width: 0%"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+                        <span style="font-size: 13px; color: #718096; font-weight: 500;" id="water-amount">0 / 2.5 L</span>
+                        <button class="btn" onclick="logWater()" style="width: auto; padding: 10px 20px; margin: 0;" aria-label="Add 250 milliliters of water">+ 250ml</button>
+                    </div>
+                </div>
+
+                <div class="ai-section">
+                    <div class="ai-header">
+                        <div class="ai-icon">🤖</div>
+                        <div class="ai-title">Jeffrey — Health Insight</div>
+                    </div>
+                    <div class="ai-message" id="ai-insight">
+                        Loading insight from database...
+                    </div>
+                </div>
+
+                <div class="quick-actions">
+                    <button class="action-btn" onclick="storeNewData()" aria-label="Generate and store new simulated health data">Generate & Store New Data</button>
+                    <button class="action-btn" onclick="loadData()" aria-label="Refresh data from database">Refresh Data from DB</button>
+                    <button class="action-btn" onclick="showScreen('ai-chat-screen')" aria-label="Open chat with Jeffrey">Chat with Jeffrey</button>
+                    <button class="action-btn" onclick="setReminder()" aria-label="Set health reminder">Set Reminder</button>
+                    <button class="action-btn" onclick="exportMyData()" aria-label="Download my profile data as JSON">Export my data</button>
+                    <button class="action-btn" onclick="logout()" aria-label="Logout from account">Logout</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Chat Screen -->
+        <div class="screen" id="ai-chat-screen">
+            <div class="header header-with-back">
+                <button class="back-btn" onclick="showScreen('dashboard-screen')" aria-label="Go back to dashboard">←</button>
+                <div class="header-content">
+                    <h1>🤖 Jeffrey</h1>
+                    <p>Ask anything about your health data</p>
+                </div>
+                <div style="width: 40px;"></div>
+            </div>
+            <div class="content">
+                <div class="chat-container" id="chat-messages">
+                    <div class="message ai">
+                        <div class="message-avatar">🤖</div>
+                        <div class="message-bubble">
+                            👋 Hello! I'm Jeffrey — your personal health assistant.<br><br>
+                            I can help you with:<br>
+                            • Analyzing your health data<br>
+                            • Providing activity recommendations<br>
+                            • Explaining metrics (heart rate, blood pressure, steps)<br>
+                            • Offering healthy lifestyle advice<br><br>
+                            Ask me about your steps, heart rate, blood pressure, or request recommendations!
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-input-container">
+                    <input type="text" class="chat-input" id="chat-input" placeholder="Message Jeffrey…" maxlength="8000" autocomplete="off" aria-label="Message to Jeffrey" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMessage();}">
+                    <button class="send-btn" onclick="sendMessage()" title="Send message">➤</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="nav-buttons" id="nav-buttons">
+        <button class="nav-btn active" onclick="showScreen('login-screen')" id="nav-login">Login</button>
+        <button class="nav-btn" onclick="showScreen('register-screen')" id="nav-register">Register</button>
+        <button class="nav-btn" onclick="showScreen('dashboard-screen')" id="nav-dashboard">Dashboard</button>
+        <button class="nav-btn" onclick="showScreen('ai-chat-screen')" id="nav-chat">Jeffrey</button>
+    </div>
+
+    <!-- Toast notification -->
+    <div id="toast" class="toast"></div>
+
+    <script src="assets/js/virtum.js"></script>
+    <script src="assets/js/virtum.auth.js"></script>
+</body>
+</html>

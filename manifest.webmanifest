@@ -1,0 +1,10 @@
+{
+  "name": "Virtum Health Companion",
+  "short_name": "Virtum",
+  "description": "Wellness dashboard with Jeffrey AI assistant",
+  "start_url": "./virtum.html",
+  "display": "standalone",
+  "background_color": "#667eea",
+  "theme_color": "#667eea",
+  "lang": "en"
+}
